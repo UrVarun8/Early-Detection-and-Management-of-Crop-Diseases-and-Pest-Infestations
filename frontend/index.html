@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f5130">
+<title>CropGuard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#f6f4ec; --card:#fffdf7; --ink:#1d2a20; --mute:#5d6b60; --line:#e2dfd0;
+  --green:#1f5130; --green2:#2f7a49; --accent:#c8871a;
+  --low:#4f9d62; --mod:#d9a520; --high:#e0742b; --sev:#c23a2b;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121a14; --card:#1a251d; --ink:#e8efe6; --mute:#9bab9f; --line:#2b3a2f; --green:#6fbf88; --green2:#4f9d62;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Gurmukhi","Noto Sans Devanagari",sans-serif}
+header{background:var(--green);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+@media (prefers-color-scheme:dark){header{background:#1d3324}}
+header h1{margin:0;font-size:20px;letter-spacing:.2px;flex:1}
+header small{opacity:.8;display:block;font-weight:400;font-size:12px}
+.lang button{background:transparent;border:1px solid #ffffff66;color:#fff;border-radius:6px;padding:4px 9px;margin-left:4px;cursor:pointer;font-size:13px}
+.lang button.on{background:#fff;color:#1f5130}
+nav{display:flex;gap:4px;padding:8px 12px 0;max-width:980px;margin:auto}
+nav button{flex:1;border:0;background:transparent;padding:10px 6px;font-size:15px;color:var(--mute);border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:var(--green);border-color:var(--green);font-weight:600}
+main{max-width:980px;margin:auto;padding:12px 12px 48px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.card h2{margin:0 0 8px;font-size:17px}
+.grid{display:grid;gap:12px}
+@media(min-width:720px){.grid.two{grid-template-columns:1fr 1fr}}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button.primary{background:var(--green);color:#fff;border:0;border-radius:10px;padding:13px 16px;font-size:16px;font-weight:600;width:100%;margin-top:14px;cursor:pointer}
+@media (prefers-color-scheme:dark){button.primary{color:#0e1a12}}
+button.primary:disabled{opacity:.6}
+button.ghost{background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--ink);cursor:pointer}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--mute);cursor:pointer}
+.drop img{max-width:100%;max-height:240px;border-radius:8px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;color:#fff}
+.b-low{background:var(--low)}.b-moderate{background:var(--mod);color:#2b2200}.b-high{background:var(--high)}.b-severe{background:var(--sev)}
+.b-demo{background:var(--accent);color:#2b1c00}.b-real{background:var(--green2)}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--green2)}
+.bar.sev>i{background:linear-gradient(90deg,var(--low),var(--mod),var(--sev))}
+.warn{background:#fff4d6;border:1px solid #e8c766;color:#4a3800;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px}
+@media (prefers-color-scheme:dark){.warn{background:#3a3010;border-color:#7a6420;color:#f1deaa}}
+.big{font-size:26px;font-weight:700;line-height:1.15}
+.muted{color:var(--mute);font-size:14px}
+ul{margin:6px 0 0;padding-left:20px}
+.imgs{display:grid;gap:10px}@media(min-width:560px){.imgs{grid-template-columns:1fr 1fr}}
+.imgs img{width:100%;border-radius:8px;border:1px solid var(--line)}
+table.fc{width:100%;border-collapse:collapse;font-size:13px}
+.fc th,.fc td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.fc th:first-child,.fc td:first-child{text-align:left}
+.cell{border-radius:6px;padding:5px 0;color:#fff;font-weight:600}
+.c-low{background:var(--low)}.c-moderate{background:var(--mod);color:#2b2200}.c-high{background:var(--high)}.c-severe{background:var(--sev)}
+#map{height:380px;border-radius:12px;border:1px solid var(--line)}
+.alert{border-left:5px solid var(--sev);background:var(--card);padding:10px 12px;border-radius:8px;margin:8px 0}
+.alert.high{border-color:var(--high)}.alert.moderate{border-color:var(--mod)}
+.hidden{display:none}
+.chem{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0}
+.rupee{font-size:22px;font-weight:700;color:var(--sev)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌾 CropGuard<small data-i="tagline">Early detection &amp; management of crop diseases and pests</small></h1>
+  <div class="lang"><button data-lang="en" class="on">EN</button><button data-lang="pa">ਪੰ</button><button data-lang="hi">हि</button></div>
+</header>
+<nav>
+  <button data-tab="diagnose" class="on" data-i="tab_diag">Diagnose</button>
+  <button data-tab="forecast" data-i="tab_fc">Forecast</button>
+  <button data-tab="history" data-i="tab_hist">History &amp; Map</button>
+</nav>
+<main>
+
+<!-- DIAGNOSE -->
+<section id="diagnose">
+  <div class="card">
+    <div class="row">
+      <div><label data-i="crop">Crop</label><select id="crop"></select></div>
+      <div><label data-i="plot">Plot name</label><input id="plot" value="My field"></div>
+    </div>
+    <label data-i="photo">Leaf photo</label>
+    <div class="drop" id="drop"><span data-i="photo_hint">Tap to take or choose a photo. One leaf, plain background, good light.</span></div>
+    <input type="file" id="file" accept="image/*" capture="environment" class="hidden">
+    <div class="row">
+      <div><label data-i="area">Area (acres)</label><input id="area" type="number" step="0.1" value="1" min="0.1"></div>
+      <div><label data-i="price">Price (₹/quintal)</label><input id="price" type="number" step="10"></div>
+      <div><label data-i="delay">If I wait (weeks)</label><input id="delay" type="number" step="0.5" value="1" min="0"></div>
+    </div>
+    <div class="row">
+      <div><label>Lat</label><input id="lat" type="number" step="0.01" value="30.9"></div>
+      <div><label>Lon</label><input id="lon" type="number" step="0.01" value="75.85"></div>
+      <div style="flex:0 0 auto;align-self:end"><button class="ghost" id="geo">📍</button></div>
+    </div>
+    <button class="primary" id="go" data-i="analyze">Analyse</button>
+    <div id="err" class="warn hidden"></div>
+  </div>
+  <div id="result"></div>
+</section>
+
+<!-- FORECAST -->
+<section id="forecast" class="hidden">
+  <div class="card">
+    <h2 data-i="fc_title">7-day outbreak risk</h2>
+    <p class="muted" data-i="fc_sub">Risk is computed from temperature, humidity and rain, before symptoms show. Uses the crop and location from the Diagnose tab.</p>
+    <button class="primary" id="fcgo" data-i="fc_go">Get forecast</button>
+    <div id="fcout"></div>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section id="history" class="hidden">
+  <div class="card"><h2 data-i="map_title">Scan map</h2><div id="map"></div></div>
+  <div class="card"><h2 data-i="hist_title">Scan history</h2><div id="histlist" class="muted"></div>
+    <button class="ghost" id="clear" style="margin-top:10px" data-i="clear">Clear history</button></div>
+</section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const T = {
+  en:{tagline:"Early detection & management of crop diseases and pests",tab_diag:"Diagnose",tab_fc:"Forecast",tab_hist:"History & Map",
+    crop:"Crop",plot:"Plot name",photo:"Leaf photo",photo_hint:"Tap to take or choose a photo. One leaf, plain background, good light.",
+    area:"Area (acres)",price:"Price (₹/quintal)",delay:"If I wait (weeks)",analyze:"Analyse",busy:"Analysing…",
+    fc_title:"7-day outbreak risk",fc_sub:"Risk is computed from temperature, humidity and rain, before symptoms show. Uses the crop and location from the Diagnose tab.",fc_go:"Get forecast",
+    map_title:"Scan map",hist_title:"Scan history",clear:"Clear history",
+    r_diag:"What is it?",r_sev:"How bad is it?",r_spread:"How fast will it spread?",r_manage:"What do I do?",r_cost:"What if I wait?",
+    organic:"Organic / low-input",chemical:"Chemical",cultural:"Field practices",timing:"Timing",
+    conf:"Confidence",top3:"Other possibilities",cause:"Cause",symptoms:"Symptoms",
+    demo_warn:"Demo mode: no trained model is loaded, so this diagnosis is only an estimate from lesion colour and local weather. Do not rely on it. Train the model with train.py.",
+    low_warn:"The AI is not sure. Retake the photo: one leaf, flat, in daylight, plain background, no shadows.",
+    no_leaf:"No leaf found in the photo. Retake it closer, with a plain background.",
+    now:"Now",peak:"Peak",risk_low:"low",risk_moderate:"moderate",risk_high:"high",risk_severe:"severe",
+    loss:"Possible yield loss",rupees:"Possible loss",weather_sim:"Weather data is simulated (could not reach the forecast service).",
+    stage_early:"Early",stage_moderate:"Moderate",stage_severe:"Severe",lesion:"of leaf area affected",spread_rating:"Spread speed",
+    none_hist:"No scans yet.",alerts:"Alerts",no_alerts:"No elevated risk in the next 7 days.",
+    healthy:"No treatment needed. Keep scouting and watch the forecast."},
+  pa:{tagline:"ਫ਼ਸਲੀ ਬਿਮਾਰੀਆਂ ਅਤੇ ਕੀੜਿਆਂ ਦੀ ਛੇਤੀ ਪਛਾਣ ਤੇ ਪ੍ਰਬੰਧ",tab_diag:"ਜਾਂਚ",tab_fc:"ਪੇਸ਼ੀਨਗੋਈ",tab_hist:"ਇਤਿਹਾਸ ਤੇ ਨਕਸ਼ਾ",
+    crop:"ਫ਼ਸਲ",plot:"ਖੇਤ ਦਾ ਨਾਮ",photo:"ਪੱਤੇ ਦੀ ਫੋਟੋ",photo_hint:"ਫੋਟੋ ਖਿੱਚਣ ਜਾਂ ਚੁਣਨ ਲਈ ਦਬਾਓ। ਇੱਕ ਪੱਤਾ, ਸਾਦਾ ਪਿਛੋਕੜ, ਚੰਗੀ ਰੌਸ਼ਨੀ।",
+    area:"ਰਕਬਾ (ਏਕੜ)",price:"ਭਾਅ (₹/ਕੁਇੰਟਲ)",delay:"ਜੇ ਮੈਂ ਉਡੀਕ ਕਰਾਂ (ਹਫ਼ਤੇ)",analyze:"ਜਾਂਚ ਕਰੋ",busy:"ਜਾਂਚ ਹੋ ਰਹੀ ਹੈ…",
+    fc_title:"7 ਦਿਨਾਂ ਦਾ ਬਿਮਾਰੀ ਖ਼ਤਰਾ",fc_sub:"ਲੱਛਣ ਦਿਸਣ ਤੋਂ ਪਹਿਲਾਂ, ਤਾਪਮਾਨ, ਨਮੀ ਅਤੇ ਮੀਂਹ ਤੋਂ ਖ਼ਤਰਾ ਕੱਢਿਆ ਜਾਂਦਾ ਹੈ।",fc_go:"ਪੇਸ਼ੀਨਗੋਈ ਵੇਖੋ",
+    map_title:"ਜਾਂਚ ਨਕਸ਼ਾ",hist_title:"ਜਾਂਚ ਇਤਿਹਾਸ",clear:"ਇਤਿਹਾਸ ਮਿਟਾਓ",
+    r_diag:"ਇਹ ਕੀ ਹੈ?",r_sev:"ਕਿੰਨਾ ਗੰਭੀਰ ਹੈ?",r_spread:"ਕਿੰਨੀ ਤੇਜ਼ੀ ਨਾਲ ਫੈਲੇਗਾ?",r_manage:"ਮੈਂ ਕੀ ਕਰਾਂ?",r_cost:"ਉਡੀਕ ਕੀਤੀ ਤਾਂ?",
+    organic:"ਜੈਵਿਕ / ਘੱਟ ਲਾਗਤ",chemical:"ਰਸਾਇਣਕ",cultural:"ਖੇਤ ਦੇ ਤਰੀਕੇ",timing:"ਸਮਾਂ",
+    conf:"ਭਰੋਸਾ",top3:"ਹੋਰ ਸੰਭਾਵਨਾਵਾਂ",cause:"ਕਾਰਨ",symptoms:"ਲੱਛਣ",
+    demo_warn:"ਡੈਮੋ ਮੋਡ: ਕੋਈ ਸਿਖਲਾਈ ਪ੍ਰਾਪਤ ਮਾਡਲ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਇਹ ਸਿਰਫ਼ ਅੰਦਾਜ਼ਾ ਹੈ। ਇਸ ‘ਤੇ ਭਰੋਸਾ ਨਾ ਕਰੋ।",
+    low_warn:"AI ਨੂੰ ਪੱਕਾ ਯਕੀਨ ਨਹੀਂ। ਫੋਟੋ ਦੁਬਾਰਾ ਖਿੱਚੋ: ਇੱਕ ਪੱਤਾ, ਦਿਨ ਦੀ ਰੌਸ਼ਨੀ, ਸਾਦਾ ਪਿਛੋਕੜ।",
+    no_leaf:"ਫੋਟੋ ਵਿੱਚ ਪੱਤਾ ਨਹੀਂ ਮਿਲਿਆ। ਨੇੜਿਓਂ ਦੁਬਾਰਾ ਖਿੱਚੋ।",
+    now:"ਹੁਣ",peak:"ਸਿਖਰ",risk_low:"ਘੱਟ",risk_moderate:"ਦਰਮਿਆਨਾ",risk_high:"ਵੱਧ",risk_severe:"ਬਹੁਤ ਵੱਧ",
+    loss:"ਸੰਭਾਵੀ ਝਾੜ ਘਾਟਾ",rupees:"ਸੰਭਾਵੀ ਨੁਕਸਾਨ",weather_sim:"ਮੌਸਮ ਡਾਟਾ ਨਕਲੀ ਹੈ।",
+    stage_early:"ਸ਼ੁਰੂਆਤੀ",stage_moderate:"ਦਰਮਿਆਨਾ",stage_severe:"ਗੰਭੀਰ",lesion:"ਪੱਤੇ ਦਾ ਹਿੱਸਾ ਪ੍ਰਭਾਵਿਤ",spread_rating:"ਫੈਲਣ ਦੀ ਗਤੀ",
+    none_hist:"ਹਾਲੇ ਕੋਈ ਜਾਂਚ ਨਹੀਂ।",alerts:"ਚੇਤਾਵਨੀਆਂ",no_alerts:"ਅਗਲੇ 7 ਦਿਨਾਂ ਵਿੱਚ ਵੱਧ ਖ਼ਤਰਾ ਨਹੀਂ।",
+    healthy:"ਇਲਾਜ ਦੀ ਲੋੜ ਨਹੀਂ। ਨਿਗਰਾਨੀ ਜਾਰੀ ਰੱਖੋ।"},
+  hi:{tagline:"फसल रोगों और कीटों की जल्दी पहचान व प्रबंधन",tab_diag:"जाँच",tab_fc:"पूर्वानुमान",tab_hist:"इतिहास व नक्शा",
+    crop:"फसल",plot:"खेत का नाम",photo:"पत्ते की फोटो",photo_hint:"फोटो लेने या चुनने के लिए दबाएँ। एक पत्ता, सादा पृष्ठभूमि, अच्छी रोशनी।",
+    area:"क्षेत्रफल (एकड़)",price:"भाव (₹/क्विंटल)",delay:"अगर मैं रुकूँ (हफ़्ते)",analyze:"जाँच करें",busy:"जाँच हो रही है…",
+    fc_title:"7 दिन का रोग जोखिम",fc_sub:"लक्षण दिखने से पहले तापमान, नमी और बारिश से जोखिम निकाला जाता है।",fc_go:"पूर्वानुमान देखें",
+    map_title:"जाँच नक्शा",hist_title:"जाँच इतिहास",clear:"इतिहास मिटाएँ",
+    r_diag:"यह क्या है?",r_sev:"कितना गंभीर है?",r_spread:"कितनी तेज़ी से फैलेगा?",r_manage:"मैं क्या करूँ?",r_cost:"रुकने पर क्या होगा?",
+    organic:"जैविक / कम लागत",chemical:"रासायनिक",cultural:"खेत के तरीके",timing:"समय",
+    conf:"भरोसा",top3:"अन्य संभावनाएँ",cause:"कारण",symptoms:"लक्षण",
+    demo_warn:"डेमो मोड: कोई प्रशिक्षित मॉडल नहीं है, इसलिए यह सिर्फ़ अनुमान है। इस पर भरोसा न करें।",
+    low_warn:"AI को पक्का यकीन नहीं। फोटो दोबारा लें: एक पत्ता, दिन की रोशनी, सादा पृष्ठभूमि।",
+    no_leaf:"फोटो में पत्ता नहीं मिला। पास से दोबारा लें।",
+    now:"अभी",peak:"चरम",risk_low:"कम",risk_moderate:"मध्यम",risk_high:"अधिक",risk_severe:"बहुत अधिक",
+    loss:"संभावित उपज नुकसान",rupees:"संभावित नुकसान",weather_sim:"मौसम डेटा नकली है।",
+    stage_early:"शुरुआती",stage_moderate:"मध्यम",stage_severe:"गंभीर",lesion:"पत्ती का हिस्सा प्रभावित",spread_rating:"फैलने की गति",
+    none_hist:"अभी कोई जाँच नहीं।",alerts:"चेतावनियाँ",no_alerts:"अगले 7 दिनों में अधिक जोखिम नहीं।",
+    healthy:"इलाज की ज़रूरत नहीं। निगरानी जारी रखें।"}
+};
+let lang = localStorage.getItem("lang") || "en";
+const t = k => (T[lang] && T[lang][k]) || T.en[k] || k;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(e => e.textContent = t(e.dataset.i));
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
+  localStorage.setItem("lang", lang);
+}
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.lang; applyLang(); if (lastResult) renderResult(lastResult); });
+
+// tabs
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  ["diagnose","forecast","history"].forEach(id => $("#"+id).classList.toggle("hidden", id !== b.dataset.tab));
+  if (b.dataset.tab === "history") loadHistory();
+});
+
+// meta
+let META = null, file = null, lastResult = null;
+fetch("/api/meta").then(r => r.json()).then(m => {
+  META = m;
+  $("#crop").innerHTML = Object.entries(m.crops).map(([k,v]) => `<option value="${k}">${esc(v.label)}</option>`).join("");
+  $("#crop").onchange();
+});
+$("#crop").onchange = () => { if (META) $("#price").placeholder = META.crops[$("#crop").value].price_q; };
+
+// photo
+$("#drop").onclick = () => $("#file").click();
+$("#file").onchange = e => {
+  file = e.target.files[0]; if (!file) return;
+  const url = URL.createObjectURL(file);
+  $("#drop").innerHTML = `<img src="${url}" alt="">`;
+};
+$("#geo").onclick = () => navigator.geolocation && navigator.geolocation.getCurrentPosition(p => {
+  $("#lat").value = p.coords.latitude.toFixed(3); $("#lon").value = p.coords.longitude.toFixed(3);
+});
+
+function showErr(m){ const e = $("#err"); e.textContent = m; e.classList.toggle("hidden", !m); }
+
+$("#go").onclick = async () => {
+  showErr("");
+  if (!file) { showErr("Choose a photo first."); return; }
+  const fd = new FormData();
+  fd.append("image", file); fd.append("crop", $("#crop").value); fd.append("plot", $("#plot").value || "My field");
+  fd.append("lat", $("#lat").value); fd.append("lon", $("#lon").value);
+  fd.append("area_acres", $("#area").value || 1); fd.append("delay_weeks", $("#delay").value || 1);
+  fd.append("price_per_q", $("#price").value || 0);
+  $("#go").disabled = true; $("#go").textContent = t("busy");
+  try {
+    const r = await fetch("/api/analyze", {method:"POST", body: fd});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    lastResult = await r.json(); renderResult(lastResult);
+  } catch (e) { showErr(e.message); }
+  $("#go").disabled = false; $("#go").textContent = t("analyze");
+};
+
+const lvl = l => `<span class="badge b-${l}">${t("risk_"+l)}</span>`;
+const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+
+function renderResult(r){
+  const d = r.diagnosis, s = r.severity, sp = r.spread, m = r.management, c = r.cost_of_waiting;
+  const healthy = d.type === "healthy";
+  let warn = "";
+  if (d.reason === "no_leaf") warn = `<div class="warn">${t("no_leaf")}</div>`;
+  else if (d.mode === "demo") warn = `<div class="warn">${t("demo_warn")}</div>`;
+  else if (d.uncertain) warn = `<div class="warn">${t("low_warn")}</div>`;
+
+  const conf = Math.round(d.top[0].confidence * 100);
+  const others = d.top.slice(1).map(x => `<div class="muted">${esc(x.name)} · ${Math.round(x.confidence*100)}%</div>`).join("");
+  let html = `
+  <div class="card"><h2>1 · ${t("r_diag")} <span class="badge b-${d.mode}">${d.mode}</span></h2>${warn}
+    <div class="big">${esc(d.name)}</div>
+    <div class="muted">${esc(d.type)}</div>
+    <div style="margin:10px 0 4px">${t("conf")}: <b>${conf}%</b></div>
+    <div class="bar"><i style="width:${conf}%"></i></div>
+    ${others ? `<h2 style="margin-top:12px;font-size:14px">${t("top3")}</h2>${others}` : ""}
+    ${healthy ? "" : `<p><b>${t("cause")}:</b> ${esc(d.cause)}<br><b>${t("symptoms")}:</b> ${esc(d.symptoms)}</p>`}
+    ${d.heatmap ? `<img src="data:image/png;base64,${d.heatmap}" style="max-width:100%;border-radius:8px" alt="Grad-CAM">` : ""}
+  </div>`;
+
+  html += `<div class="card"><h2>2 · ${t("r_sev")}</h2>
+    <div class="big">${s.pct}% <span class="muted" style="font-size:14px">${t("lesion")}</span></div>
+    <div class="bar sev" style="margin:8px 0"><i style="width:${Math.min(100,s.pct*2)}%"></i></div>
+    <span class="badge b-${s.stage==="early"?"low":s.stage==="moderate"?"moderate":"severe"}">${t("stage_"+s.stage)}</span>
+    <div class="imgs" style="margin-top:10px"><img src="data:image/png;base64,${s.overlay}" alt="lesion overlay"></div>
+  </div>`;
+
+  if (!healthy) {
+    const o = sp.outlook;
+    html += `<div class="card"><h2>3 · ${t("r_spread")}</h2>
+      <div>${t("spread_rating")}: <b>${sp.rating}/5</b></div><p class="muted">${esc(sp.note)}</p>
+      ${o ? `<div>${t("now")}: ${lvl(o.now_level)} (${o.now}) &nbsp; ${t("peak")}: ${lvl(o.peak_level)} (${o.peak}, ${esc(o.peak_date)})</div>` : ""}
+      ${sp.weather_source === "simulated" ? `<div class="warn">${t("weather_sim")}</div>` : ""}
+    </div>`;
+
+    const li = a => a.length ? "<ul>" + a.map(x => `<li>${esc(x)}</li>`).join("") + "</ul>" : "";
+    const chem = m.chemical.map(x => `<div class="chem"><b>${esc(x.name)}</b><br>${esc(x.dose)}<div class="muted">${esc(x.note)}</div></div>`).join("");
+    html += `<div class="card"><h2>4 · ${t("r_manage")}</h2>
+      ${m.timing ? `<p><b>${t("timing")}:</b> ${esc(m.timing)}</p>` : ""}
+      ${m.organic.length ? `<h2 style="font-size:14px">${t("organic")}</h2>${li(m.organic)}` : ""}
+      ${chem ? `<h2 style="font-size:14px;margin-top:12px">${t("chemical")}</h2>${chem}` : ""}
+      ${m.cultural.length ? `<h2 style="font-size:14px;margin-top:12px">${t("cultural")}</h2>${li(m.cultural)}` : ""}
+      <p class="muted">${esc(m.disclaimer)}</p></div>`;
+
+    if (c) html += `<div class="card"><h2>5 · ${t("r_cost")} (${c.weeks} wk)</h2>
+      <div>${t("loss")}: <b>${c.loss_pct[0]}–${c.loss_pct[1]}%</b></div>
+      <div class="rupee">${inr(c.loss_rupees[0])} – ${inr(c.loss_rupees[1])}</div>
+      <p class="muted">${c.assumptions.area_acres} acre × ${c.assumptions.yield_q_per_acre} q/acre × ₹${c.assumptions.price_per_q}/q. Rough planning estimate; edit area and price above.</p></div>`;
+  } else {
+    html += `<div class="card"><p>${t("healthy")}</p></div>`;
+  }
+  $("#result").innerHTML = html;
+  $("#result").scrollIntoView({behavior:"smooth"});
+}
+
+// forecast
+$("#fcgo").onclick = async () => {
+  $("#fcout").innerHTML = "…";
+  const q = new URLSearchParams({lat:$("#lat").value, lon:$("#lon").value, crop:$("#crop").value});
+  const r = await fetch("/api/risk?" + q); const f = await r.json();
+  const keys = Object.keys(f.summary);
+  const lv = s => s<30?"low":s<60?"moderate":s<80?"high":"severe";
+  const dayLbl = d => new Date(d+"T00:00").toLocaleDateString(lang==="en"?"en-IN":lang+"-IN",{weekday:"short",day:"numeric"});
+  let alerts = keys.filter(k => f.summary[k].peak >= 60).map(k => {
+    const s = f.summary[k];
+    return `<div class="alert ${s.peak_level}"><b>${esc(s.name)}</b>: ${lvl(s.peak_level)} (${s.peak}) — ${esc(s.peak_date)}</div>`;
+  }).join("") || `<div class="muted">${t("no_alerts")}</div>`;
+  let tbl = `<table class="fc"><tr><th></th>${f.days.map(d=>`<th>${dayLbl(d.date)}</th>`).join("")}</tr>`;
+  keys.forEach(k => { tbl += `<tr><td>${esc(f.names[k])}</td>${f.days.map(d=>`<td><div class="cell c-${lv(d.risks[k])}">${d.risks[k]}</div></td>`).join("")}</tr>`; });
+  tbl += `<tr><td class="muted">°C</td>${f.days.map(d=>`<td class="muted">${d.tmean}</td>`).join("")}</tr>`;
+  tbl += `<tr><td class="muted">RH %</td>${f.days.map(d=>`<td class="muted">${d.rh}</td>`).join("")}</tr>`;
+  tbl += `<tr><td class="muted">mm</td>${f.days.map(d=>`<td class="muted">${d.rain}</td>`).join("")}</tr></table>`;
+  $("#fcout").innerHTML = `<h2 style="margin-top:14px">${t("alerts")}</h2>${alerts}
+    ${f.source==="simulated" ? `<div class="warn">${t("weather_sim")}</div>` : ""}<div style="overflow-x:auto;margin-top:10px">${tbl}</div>`;
+};
+
+// history + map
+let map, layer;
+async function loadHistory(){
+  if (!map) { map = L.map("map").setView([30.9,75.85], 7);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map); layer = L.layerGroup().addTo(map); }
+  setTimeout(() => map.invalidateSize(), 50);
+  const rows = await (await fetch("/api/scans")).json();
+  layer.clearLayers();
+  const col = s => s<5?"#4f9d62":s<20?"#d9a520":"#c23a2b";
+  rows.forEach(r => L.circleMarker([r.lat,r.lon],{radius:9,color:col(r.severity),fillOpacity:.7})
+    .bindPopup(`<b>${esc(r.name)}</b><br>${esc(r.plot)} · ${esc(r.crop)}<br>${r.severity}% · ${new Date(r.ts*1000).toLocaleString()}`).addTo(layer));
+  if (rows.length) map.setView([rows[0].lat, rows[0].lon], 9);
+  $("#histlist").innerHTML = rows.length ? `<table class="fc"><tr><th>When</th><th>Plot</th><th>Result</th><th>%</th></tr>` +
+    rows.map(r => `<tr><td>${new Date(r.ts*1000).toLocaleDateString()}</td><td>${esc(r.plot)}</td><td>${esc(r.name)}</td><td>${r.severity}</td></tr>`).join("") + "</table>" : t("none_hist");
+}
+$("#clear").onclick = async () => { if (confirm("Delete all scans?")) { await fetch("/api/scans",{method:"DELETE"}); loadHistory(); } };
+
+applyLang();
+</script>
+</body>
+</html>

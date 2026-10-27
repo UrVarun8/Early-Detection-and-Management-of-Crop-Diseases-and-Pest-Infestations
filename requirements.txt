@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pillow
+numpy
+httpx
+python-multipart
+# Only needed for real (trained) mode and train.py:
+# torch
+# torchvision
